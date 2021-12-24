@@ -55,7 +55,7 @@ def test_model():
 
 
 
-def evaluate_model(dataLoader, n_channels, n_classes, epochs, dataset_train, show_metrics=False, numImages=5, device=None):
+def evaluate_model(dataLoader, n_channels, n_classes, epochs, show_metrics=False, numImages=5, device=None):
     models = [load_model(n_channels, n_classes, e)[0] for e in epochs]
     numModels = len(models)
     for idx, (data, labels) in enumerate(dataLoader):
@@ -79,20 +79,51 @@ def evaluate_model(dataLoader, n_channels, n_classes, epochs, dataset_train, sho
             list_predictions = []
             model = model.to(device)
             with torch.no_grad():
-                pred = model(data.to(device))
 
+                data, segmask = data.to(device), labels.to(device)
+                segin, edgein = model(data.to(device))
+                
                 # get the label (i.e., the maximum position for each pixel along the class dimension)
-                yhat = torch.argmax(pred, dim=1)
+                seginhat = segin.cpu().numpy().astype(np.float64).transpose((0, 2, 3, 1))
+                print('seginhat', seginhat.shape)
+                seginhat = torch.from_numpy(seginhat).to(device).float()
+                print('seginhat', seginhat.shape)
+                seginhat = torch.argmax(seginhat, dim=1)
+                print('seginhat', seginhat.shape)
+                segin = seginhat.cpu().numpy().astype(np.float64).transpose((0, 2, 3, 1))
+                print('segin', segin.shape)
 
-                list_predictions.append(yhat[0, ...].cpu().numpy().flatten())
+                edgeinhat = segin.cpu().numpy().astype(np.float64).transpose((0, 2, 3, 1))
+                edgeinhat = torch.from_numpy(edgeinhat).to(device).float()
+                edgeinhat = torch.argmax(edgeinhat, dim=1)
+                edgein = edgeinhat.cpu().numpy().astype(np.float64).transpose((0, 2, 3, 1))
+
+                """for i in range(segin.shape[0]):
+                    seginhat = torch.argmax(segin, dim=1)
+                    segin[i] = seginhat.transpose((2, 0, 1))
+
+                    temp = edgein[i].transpose((1,2,0))
+                    edgeinhat = torch.argmax(temp, dim=1)
+                    edgein[i] = edgeinhat.transpose((2, 0, 1))"""
+
+                plt.subplot(141),plt.imshow(segin[1][0].data.cpu().numpy())
+                plt.title('segin Image'),plt.xticks([]), plt.yticks([])
+                plt.subplot(142),plt.imshow(edgein[1][0].data.cpu().numpy())
+                plt.title('edgein Image'),plt.xticks([]), plt.yticks([])
+                plt.subplot(143),plt.imshow(segmask[1][0].data.cpu().numpy())
+                plt.title('segmask Image'),plt.xticks([]), plt.yticks([])
+                plt.subplot(144),plt.imshow(labels[1][0].data.cpu().numpy())
+                plt.title('edgemask Image'),plt.xticks([]), plt.yticks([])
+                plt.show()
+
+                list_predictions.append(segin[0, ...].cpu().numpy().flatten())
                 all_predictions = np.concatenate(list_predictions)
                 all_gt_labels = np.concatenate(list_gt_labels)
-                accuracy.append(accuracy_score(all_gt_labels, all_predictions))
-                conf_matrix.append(confusion_matrix(
-                    all_gt_labels, all_predictions, labels=[0, 1, 2, 3, 4, 5]))
+                # accuracy.append(accuracy_score(all_gt_labels, all_predictions))
+                # conf_matrix.append(confusion_matrix(all_gt_labels, all_predictions, labels=[0, 1, 2, 3, 4, 5]))
 
                 # plot model predictions
-                ax[mIdx+1].imshow(yhat[0, ...].cpu().numpy(), cmap=cMap)
+                ax[mIdx+1].imshow(segin[0, ...].cpu().numpy(), cmap=cMap)
                 ax[mIdx+1].axis('off')
                 if idx == 0:
                     cax = ax[mIdx+1].set_title(f'Epoch {epochs[mIdx]}')

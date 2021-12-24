@@ -22,7 +22,7 @@ def main():
     learning_rate = 0.1
     momentum = 0.5
     weight_decay = 0.001
-    num_epochs = 40
+    num_epochs = 1 # 40
     n_channels = 5  # NIR - R - G - DSM - nDSM
     n_classes = 6  #'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
 
@@ -44,27 +44,27 @@ def main():
         model, loss_train, oa_train = train_epoch(dl_train, model, optimi, device)
 
         # validation
-        loss_val, oa_val = validate_epoch(dl_val, model, device)
+        # loss_val, oa_val = validate_epoch(dl_val, model, device)
 
         # print stats
-        print('[Ep. {}/{}] Loss train: {:.2f}, val: {:.2f}; OA train: {:.2f}, val: {:.2f}'.format(
+        """print('[Ep. {}/{}] Loss train: {:.2f}, val: {:.2f}; OA train: {:.2f}, val: {:.2f}'.format(
             epoch+1, num_epochs,
             loss_train, loss_val,
             100*oa_train, 100*oa_val
-        ))
+        ))"""
 
         # save model
         epoch += 1
         save_model(model, epoch)
     
-    """
+    
     # visualize predictions for a number of epochs
-    dl_val_single = load_dataloader(1, 'val')
-    epochs = [0, 15, 20, 36]
+    dl_val_single = load_dataloader(2, 'val')
+    epochs = ['latest', 'latest', 'latest', 'latest'] #[0, 15, 20, 36]
     n_channels = 5
     n_classes = 6
-    evaluate_model(dl_val_single, n_channels, n_classes,epochs, dataset_train=dl_train, show_metrics = True, numImages=15,device = device)
-    """
+    evaluate_model(dl_val_single, n_channels, n_classes,epochs, show_metrics = True, numImages=15,device = device)
+    
     
 
 

@@ -179,7 +179,7 @@ class _AtrousSpatialPyramidPoolingModule(nn.Module):
         x_size = x.size()
 
         img_features = self.img_pooling(x)
-        img_features = self.img_conv(img_features)
+        img_features = self.img_conv(img_features)  # works only with more than one image per batch
         img_features = F.interpolate(img_features, x_size[2:],
                                      mode='bilinear', align_corners=True)
         out = img_features
