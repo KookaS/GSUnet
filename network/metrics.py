@@ -52,3 +52,35 @@ def IoU(mask_true, mask_pred, n_classes=6):
         cm = confusion_matrix(mask_true.flatten(), mask_pred.flatten(), labels=labels)
         
         return compute_IoU(cm)
+
+def compute_metrics(cm):
+    '''
+    Adapted from:
+        https://github.com/davidtvs/PyTorch-ENet/blob/master/metric/iou.py
+        https://github.com/tensorflow/tensorflow/blob/v2.3.0/tensorflow/python/keras/metrics.py#L2716-L2844
+    '''
+    
+    sum_over_row = cm.sum(axis=0)
+    sum_over_col = cm.sum(axis=1)
+    true_positives = np.diag(cm)
+
+    # sum_over_row + sum_over_col = 2 * true_positives + false_positives + false_negatives.
+    denominator = sum_over_row + sum_over_col - true_positives
+    
+    iou = true_positives / denominator
+
+    precision = true_positives/sum_over_col
+
+    recall = true_positives/sum_over_row
+
+    f1 = 2* (precision*recall)/(precision + recall)
+    
+    N = sum(sum_over_row)
+    tmp = 0
+    for i in range(len(sum_over_row)):
+      tmp += sum_over_row[i]*sum_over_col[i]
+    nominator = N *(sum(true_positives.flatten())) - tmp
+    denominator = N*N - tmp
+    kappa = (nominator)/(denominator)
+
+    return iou, recall, precision, f1, kappa

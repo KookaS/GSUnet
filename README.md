@@ -8,8 +8,9 @@ Inspired from [GSCNN](https://nv-tlabs.github.io/GSCNN/)
 Torch: https://pytorch.org/
 
     pip install matplotlib tqdm sklearn
-    pip3 install opencv-python
-    pip3 install -U albumentations
+    sudo pip3 install opencv-python
+    sudo pip3 install scikit-learn
+    sudo pip3 install -U albumentations
 
 CUDA : https://pytorch.org/get-started/locally/
 

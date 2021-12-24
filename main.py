@@ -56,15 +56,16 @@ def main():
         # save model
         epoch += 1
         save_model(model, epoch)
-
+    
+    """
     # visualize predictions for a number of epochs
     dl_val_single = load_dataloader(1, 'val')
-
-    # load model states at different epochs
-    epochs = [0, 15, 20, 'latest']
+    epochs = [0, 15, 20, 36]
     n_channels = 5
     n_classes = 6
-    evaluate_model(dl_val_single,n_channels, n_classes, epochs, dataset_train=dl_train,numImages=5, device = device)
+    evaluate_model(dl_val_single, n_channels, n_classes,epochs, dataset_train=dl_train, show_metrics = True, numImages=15,device = device)
+    """
+    
 
 
 if __name__ == '__main__':

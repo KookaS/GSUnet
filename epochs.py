@@ -1,11 +1,9 @@
-from torch.nn.modules import loss
-from tqdm.notebook import trange      # pretty progress bar
-import matplotlib.pyplot as plt
 from network.loss import JointEdgeSegLoss
 import torch
 import numpy as np
 import cv2
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -23,7 +21,14 @@ def train_epoch(data_loader, model, optimiser, device):
 
     # iterate over dataset
     with tqdm(range(len(data_loader))) as pBar:
+
+        i_security = 0
         for idx, (data, target) in enumerate(data_loader):
+
+            #to prevent failing on the last images which is defectuous in my dataset
+            i_security += 1
+            if i_security >= len(data_loader)-1:
+                break
 
             # put data and target onto correct device
             data, segmask = data.to(device), target.to(device)
@@ -40,13 +45,9 @@ def train_epoch(data_loader, model, optimiser, device):
             canny = np.zeros((x_size[0], x_size[1], x_size[2]))
             for i in range(x_size[0]):
                 canny[i] = cv2.Canny(im_arr[i], 10, 230)
+            canny = canny > 0
+            canny = canny.astype(np.float64)
             canny = np.reshape(canny, (x_size[0], 1, x_size[1], x_size[2]))
-
-            """plt.subplot(121),plt.imshow(segmask[1][0])
-            plt.xticks([]), plt.yticks([])
-            plt.subplot(122),plt.imshow(canny[1][0])
-            plt.xticks([]), plt.yticks([])
-            plt.show()"""
 
             edgemask = torch.from_numpy(canny).to(
                 device).float()
@@ -59,17 +60,24 @@ def train_epoch(data_loader, model, optimiser, device):
             # forward pass
             segin, edgein = model(data)
             segin, edgein = segin.to(device), edgein.to(device)
-            # print('segin', segin.size(), 'edgein', edgein.size())
 
             # loss
             n_classes = 6  # 'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
             criterion_joint_edgeseg_loss = JointEdgeSegLoss(
                 classes=n_classes,
                 mode='train').to(device)
-
-            # return dic losses losses['seg_loss'], losses['edge_loss'], losses['att_loss'], losses['dual_loss']
             loss_dict = criterion_joint_edgeseg_loss(
                 (segin, edgein), (segmask, edgemask))
+
+            plt.subplot(141),plt.imshow(segin[1][0].data.cpu().numpy())
+            plt.title('segin Image'),plt.xticks([]), plt.yticks([])
+            plt.subplot(142),plt.imshow(edgein[1][0].data.cpu().numpy())
+            plt.title('edgein Image'),plt.xticks([]), plt.yticks([])
+            plt.subplot(143),plt.imshow(segmask[1][0].data.cpu().numpy())
+            plt.title('segmask Image'),plt.xticks([]), plt.yticks([])
+            plt.subplot(144),plt.imshow(edgemask[1][0].data.cpu().numpy())
+            plt.title('edgemask Image'),plt.xticks([]), plt.yticks([])
+            plt.show()
 
             # backward pass
             loss_combined = loss_dict['seg_loss']
@@ -104,7 +112,7 @@ def train_epoch(data_loader, model, optimiser, device):
 
 def validate_epoch(data_loader, model, device):       # note: no optimiser needed
 
-  # set model to training mode. This is important because some layers behave differently during training and testing
+    # set model to training mode. This is important because some layers behave differently during training and testing
     model.train(False)
     model.to(device)
 
@@ -131,6 +139,8 @@ def validate_epoch(data_loader, model, device):       # note: no optimiser neede
             canny = np.zeros((x_size[0], x_size[1], x_size[2]))
             for i in range(x_size[0]):
                 canny[i] = cv2.Canny(im_arr[i], 10, 230)
+            canny = canny > 0
+            canny = canny.astype(np.float64)
             canny = np.reshape(canny, (x_size[0], 1, x_size[1], x_size[2]))
 
             edgemask = torch.from_numpy(canny).to(
@@ -145,11 +155,19 @@ def validate_epoch(data_loader, model, device):       # note: no optimiser neede
             # loss
             n_classes = 6  # 'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
             criterion_joint_edgeseg_loss = JointEdgeSegLoss(
-                classes=n_classes,
-                mode='val').to(device)
-            # return dic losses losses['seg_loss'], losses['edge_loss'], losses['att_loss'], losses['dual_loss']
+                classes=n_classes, mode='val').to(device)
             loss_dict = criterion_joint_edgeseg_loss(
                 (segin, edgein), (segmask, edgemask))
+
+            plt.subplot(141),plt.imshow(segin[1][0].data.cpu().numpy())
+            plt.title('segin Image'),plt.xticks([]), plt.yticks([])
+            plt.subplot(142),plt.imshow(edgein[1][0].data.cpu().numpy())
+            plt.title('edgein Image'),plt.xticks([]), plt.yticks([])
+            plt.subplot(143),plt.imshow(segmask[1][0].data.cpu().numpy())
+            plt.title('segmask Image'),plt.xticks([]), plt.yticks([])
+            plt.subplot(144),plt.imshow(edgemask[1][0].data.cpu().numpy())
+            plt.title('edgemask Image'),plt.xticks([]), plt.yticks([])
+            plt.show()
 
             # backward pass
             loss_combined = loss_dict['seg_loss']

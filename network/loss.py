@@ -27,6 +27,7 @@ criterion_val = JointEdgeSegLoss(classes=args.dataset_cls.num_classes, mode='val
 
 device = get_device()
 
+
 class JointEdgeSegLoss(nn.Module):
     def __init__(self, classes, weight=None, reduction='mean', ignore_index=255,
                  norm=False, upper_bound=1.0, mode='train',
@@ -37,7 +38,6 @@ class JointEdgeSegLoss(nn.Module):
             self.seg_loss = ImageBasedCrossEntropyLoss2d(
                 classes=classes, ignore_index=ignore_index, upper_bound=upper_bound).to(device)
         elif mode == 'val':
-          # reduction='mean' instead of size_average
             self.seg_loss = CrossEntropyLoss2d(size_average=True,
                                                ignore_index=ignore_index).to(device)
 
@@ -51,9 +51,6 @@ class JointEdgeSegLoss(nn.Module):
     def bce2d(self, input, target):
         # input.size() == nb_batch x 1 x w x h
         # target.size() == nb_batch x 1 x w x h
-        """print('JointEdgeSegLoss bce2d')
-        print('input', input.size())
-        print('target', target.size())"""
 
         n, c, h, w = input.size()
 
@@ -94,21 +91,7 @@ class JointEdgeSegLoss(nn.Module):
         # input.size() == nb_batch x 6 x w x h
         # target.size() == nb_batch x 1 x w x h
         # edge.size() == nb_batch x 1 x w x h
-        """print('JointEdgeSegLoss edge_attention')
-        print('input', input.size())
-        print('target', target.size())
-        print('edge', edge.size())"""
-
-        n, c, h, w = input.size()
         filler = torch.ones_like(target) * 255
-        """print('where    ',torch.where(edge > 0.8, target, filler))
-        plt.subplot(131),plt.imshow(input[1][0].data.cpu().numpy())
-        plt.xticks([]), plt.yticks([])
-        plt.subplot(132),plt.imshow(torch.where(edge > 0.8, target, filler)[1][0].data.cpu().numpy())
-        plt.xticks([]), plt.yticks([])
-        plt.subplot(133),plt.imshow(edge.max(1)[0][1].data.cpu().numpy())
-        plt.xticks([]), plt.yticks([])
-        plt.show()"""
 
         # return self.seg_loss(input, torch.where(edge.max(1)[0] > 0.8, target, filler))
         return self.seg_loss(input, torch.where(edge > 0.8, target, filler))
@@ -119,18 +102,13 @@ class JointEdgeSegLoss(nn.Module):
 
         losses = {}
 
-        """print('!!!!!!!!')
-        print('segin', segin.size())
-        print('edgein', edgein.size())
-        print('segmask', segmask.size())
-        print('edgemask', edgemask.size())"""
-
         losses['seg_loss'] = self.seg_weight * self.seg_loss(segin, segmask)
         losses['edge_loss'] = self.edge_weight * \
             20 * self.bce2d(edgein, edgemask)
         losses['att_loss'] = self.att_weight * \
             self.edge_attention(segin, segmask, edgein)
-        losses['dual_loss'] = self.dual_weight * self.dual_task(segin, segmask, ignore_pixel=5)
+        losses['dual_loss'] = self.dual_weight * \
+            self.dual_task(segin, segmask, ignore_pixel=5)
 
         return losses
 
@@ -144,7 +122,7 @@ class ImageBasedCrossEntropyLoss2d(nn.Module):
         logging.info("Using Per Image based weighted loss")
         self.num_classes = classes
         self.nll_loss = nn.NLLLoss(
-            weight, size_average, ignore_index)  # NLLLoss instead
+            weight, size_average, ignore_index) # NLLLoss instead of NLLLoss2d
         self.norm = norm
         self.upper_bound = upper_bound
         self.batch_weights = True
@@ -161,51 +139,22 @@ class ImageBasedCrossEntropyLoss2d(nn.Module):
     def forward(self, inputs, targets):
         # input.size() == nb_batch x 6 x w x h
         # target.size() == nb_batch x 1 x w x h
-        
-        """print('ImageBasedCrossEntropyLoss2d forward')
-        print('inputs', inputs.size())
-        print('targets', targets.size())"""
-
 
         target_cpu = targets.data.cpu().numpy()
-
 
         if self.batch_weights:
             weights = self.calculateWeights(target_cpu)
             self.nll_loss.weight = torch.Tensor(weights).to(device)
 
-        loss = 0.0
-        for i in [1, 1]:# range(0, inputs.shape[0]):    # 'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
+        #for i in range(0, inputs.shape[0]):    # 'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
+        for i in [1, 1]:
             if not self.batch_weights:
                 weights = self.calculateWeights(target_cpu[i])
                 self.nll_loss.weight = torch.Tensor(weights).to(device)
 
             # loss += self.nll_loss(F.log_softmax(inputs[i].unsqueeze(0)), targets[i].unsqueeze(0))
-            for j in range(0, inputs[i].shape[0]):
-                temp = target_cpu[i][0] == j
-
-                """plt.subplot(121),plt.imshow(F.log_softmax(inputs[i][j].unsqueeze(0)).data.cpu().numpy())
-                plt.xticks([]), plt.yticks([])
-                plt.subplot(122),plt.imshow(temp)
-                plt.xticks([]), plt.yticks([])
-                plt.show()"""
-
-                # print(F.log_softmax(inputs[i][j]).data.size())
-                # print(torch.Tensor(temp).to(device).unsqueeze(0).size())
-                """
-                # EXAMPLE
-                # 2 batches, 3 input channels, 1 x 5
-                loss_nll = nn.NLLLoss2d()
-                target = torch.Tensor(2, 1, 5).random_(3).long()
-                data = torch.rand(2, 3, 1, 5)
-                input1 = torch.Tensor(data, requires_grad=True)
-                loss1 = loss_nll(F.log_softmax(input1), target)
-                """
-        # print(np.squeeze(targets, axis=1).shape)
-        m = nn.LogSoftmax(dim=1)
-        loss += self.nll_loss(m(inputs), np.squeeze(targets, axis=1).long())
-        # print('loss', loss)
-        return loss
+        f = nn.LogSoftmax(dim=1)
+        return self.nll_loss(f(inputs), np.squeeze(targets, axis=1).long())
 
 
 class CrossEntropyLoss2d(nn.Module):
@@ -213,16 +162,14 @@ class CrossEntropyLoss2d(nn.Module):
     def __init__(self, weight=None, size_average=True, ignore_index=255):
         super(CrossEntropyLoss2d, self).__init__()
         logging.info("Using Cross Entropy Loss")
-        self.nll_loss = nn.NLLLoss2d(
-            weight, size_average, ignore_index)  # NLLLoss isntead
+        self.nll_loss = nn.NLLLoss(
+            weight, size_average, ignore_index)  # NLLLoss instead of NLLLoss2d
 
     def forward(self, inputs, targets):
         # input.size() == nb_batch x 6 x w x h
         # target.size() == nb_batch x 1 x w x h
-        """print('CrossEntropyLoss2d forward')
-        print('inputs', inputs.size())
-        print('targets', targets.size())"""
-        return self.nll_loss(F.log_softmax(inputs), targets)
+        f = nn.LogSoftmax(dim=1)
+        return self.nll_loss(f(inputs), np.squeeze(targets, axis=1).long())
 
 
 def _one_hot_embedding(labels, num_classes):
@@ -237,14 +184,12 @@ def _one_hot_embedding(labels, num_classes):
     """
 
     y = torch.eye(num_classes).to(device)
-    """print(np.squeeze(labels, axis=1).shape)
-    
-    print(y[np.squeeze(labels, axis=1)].permute(0, 3, 1, 2).shape)"""
     return y[np.squeeze(labels, axis=1)].permute(0, 3, 1, 2)
 
 
 def gradient_central_diff(input, cuda):
     return input, input
+
 
 def compute_grad_mag(E, cuda=False):
     E_ = convTri(E, 4, cuda)
@@ -294,9 +239,11 @@ def convTri(input, r, cuda=False):
                       kernel.unsqueeze(0).unsqueeze(0).repeat([c, 1, 1, 1]),
                       padding=0, groups=c)
     output = F.conv2d(output,
-                      kernel.t().unsqueeze(0).unsqueeze(0).repeat([c, 1, 1, 1]),
+                      kernel.t().unsqueeze(0).unsqueeze(
+                          0).repeat([c, 1, 1, 1]),
                       padding=0, groups=c)
     return output
+
 
 def numerical_gradients_2d(input, cuda=False):
     """
@@ -338,6 +285,7 @@ def _gumbel_softmax_sample(logits, tau=1, eps=1e-10):
     y = logits + gumbel_noise
     return F.softmax(y / tau, 1)
 
+
 class DualTaskLoss(nn.Module):
     def __init__(self, cuda=False):
         super(DualTaskLoss, self).__init__()
@@ -352,43 +300,21 @@ class DualTaskLoss(nn.Module):
         """
         # input_logits.size() == nb_batch x 6 x w x h
         # gts.size() == nb_batch x 1 x w x h
-        """print('DualTaskLoss forward')
-        print('input_logits', input_logits.size())
-        print('gts', gts.size())"""
 
         N, C, H, W = input_logits.shape
         th = 1e-8  # 1e-10
         eps = 1e-10
         ignore_mask = (gts == ignore_pixel).detach()
 
-        # print('!!!!ignore_mask', ignore_mask.shape)
-
         input_logits = torch.where(ignore_mask.view(N, 1, H, W).expand(N, C, H, W),
                                    torch.zeros(N, C, H, W).to(device),
                                    input_logits)
 
-        # print('!!!!input_logits', input_logits.shape)
-
-        """plt.subplot(131),plt.imshow(ignore_mask[1][0].data.cpu().numpy())
-        plt.xticks([]), plt.yticks([])
-        plt.subplot(132),plt.imshow(input_logits[1][0].data.cpu().numpy())
-        plt.xticks([]), plt.yticks([])
-        plt.show()"""
-
         gt_semantic_masks = gts.detach().long()
-        # print('!!!!gt_semantic_masks', gt_semantic_masks.shape)
         gt_semantic_masks = torch.where(ignore_mask, torch.zeros(
             N, 1, H, W).long().to(device), gt_semantic_masks).long()
 
-        # print('!!!!gt_semantic_masks', gt_semantic_masks.shape)
         gt_semantic_masks = _one_hot_embedding(gt_semantic_masks, C).detach()
-        """
-        plt.subplot(131),plt.imshow(gt_semantic_masks[1][4].data.cpu().numpy())
-        plt.xticks([]), plt.yticks([])
-        plt.subplot(132),plt.imshow(gt_semantic_masks[1][5].data.cpu().numpy())
-        plt.xticks([]), plt.yticks([])
-        plt.show()"""
-        # print('!!!!gt_semantic_masks', gt_semantic_masks.shape)
 
         g = _gumbel_softmax_sample(input_logits.view(N, C, -1), tau=0.5)
         g = g.reshape((N, C, H, W))
@@ -396,11 +322,6 @@ class DualTaskLoss(nn.Module):
 
         g_hat = compute_grad_mag(gt_semantic_masks, cuda=self._cuda)
 
-        """print('!!!!g', g.shape)
-        print('!!!!g_hat', g_hat.shape)"""
-
-        """g = g.view(N, -1)
-        g_hat = g_hat.view(N, -1)"""
         loss_ewise = F.l1_loss(g, g_hat, reduction='none', reduce=False)
 
         p_plus_g_mask = (g >= th).detach().float()
@@ -412,6 +333,5 @@ class DualTaskLoss(nn.Module):
             loss_ewise * p_plus_g_hat_mask) / (torch.sum(p_plus_g_hat_mask) + eps)
 
         total_loss = 0.5 * loss_p_plus_g + 0.5 * loss_p_plus_g_hat
-        # print('total_loss', total_loss)
 
         return total_loss

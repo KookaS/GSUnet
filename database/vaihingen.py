@@ -11,6 +11,7 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 
+# absolute path to the dataset
 data_root = 'dataset_512x512_full'
 
 
@@ -77,39 +78,43 @@ class VaihingenDataset(dataset.Dataset):
 
         # load segmentation mask (first column of CSV file)
         labels = Image.open(os.path.join(self.data_root, 'labels', item[0]))
-        labels = np.array(labels, dtype=np.int64)   # convert to NumPy array temporarily
+        # convert to NumPy array temporarily
+        labels = np.array(labels, dtype=np.int64)
 
         # load all images (remaining columns of CSV file)
-        images = [Image.open(os.path.join(self.data_root, 'images', i)) for i in item[1:]]
+        images = [Image.open(os.path.join(self.data_root, 'images', i))
+                  for i in item[1:]]
 
         # NOTE: at this point it would make sense to perform data augmentation.
         # However, the default augmentations built-in to PyTorch (resp.
         # Torchvision) (i.) only support RGB images; (ii.) only work on the
         # images themselves. In our case, however, we have multispectral data
         # and need to also transform the segmentation mask.
-        # This is not difficult to do, but goes beyond the scope of this exercise.
-        # For the sake of brevity, we'll leave it out accordingly.
         # What we will have to do, however, is to normalize the image data.
         for i in range(len(images)):
-            img = np.array(images[i], dtype=np.float32)                 # convert to NumPy array (very similar to torch.Tensor below)
-            img = (img - self.IMAGE_MEANS[i]) / self.IMAGE_STDS[i]      # normalize
+            # convert to NumPy array (very similar to torch.Tensor below)
+            img = np.array(images[i], dtype=np.float32)
+            img = (img - self.IMAGE_MEANS[i]) / \
+                self.IMAGE_STDS[i]      # normalize
             images[i] = img
 
         # finally, we need to convert our data into the torch.Tensor format. For
         # the images, we already have a "ToTensor" transform available, but we
         # need to concatenate the images together.
         tensors = [T.ToTensor()(i) for i in images]
-        tensors = torch.cat(tensors, dim=0).float()         # concatenate along spectral dimension and make sure it's in 32-bit floating point
+        # concatenate along spectral dimension and make sure it's in 32-bit floating point
+        tensors = torch.cat(tensors, dim=0).float()
 
         # For the labels, we need to convert the PIL image to a torch.Tensor.
-        labels = torch.from_numpy(labels).long()            # labels need to be in 64-bit integer format
+        # labels need to be in 64-bit integer format
+        labels = torch.from_numpy(labels).long()
 
         return tensors, labels
 
 
 # we also create a function for the data loader here (see Section 2.6 in Exercise 6)
 def load_dataloader(batch_size, split):
-    
+
     return DataLoader(
         VaihingenDataset(os.path.join(data_root, split)),
         batch_size=batch_size,
@@ -120,14 +125,12 @@ def load_dataloader(batch_size, split):
 
 
 def visualise():
-    # discrete color scheme
-    # 'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
-    #discrete color scheme
-    cMap = ListedColormap(['black', 'grey', 'lawngreen', 'darkgreen', 'orange', 'red'])     #  'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
+    # discrete color scheme 'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
+    cMap = ListedColormap(['black', 'grey', 'lawngreen',
+                          'darkgreen', 'orange', 'red'])
 
     dataset_train = VaihingenDataset(os.path.join(data_root, 'train'))
     print(dataset_train)
-
 
     # 196 is good
     aug_data, aug_trg = dataset_train.__getitem__(196)
@@ -135,35 +138,45 @@ def visualise():
     augmentation_visu = False
     if augmentation_visu:
         for i in range(len(aug_data)):
-            data_augmented = aug_data[i] 
+            data_augmented = aug_data[i]
             label_augmented = aug_trg[i]
 
-            f, axarr = plt.subplots(nrows=1,ncols=4)
-            plt.sca(axarr[0]); 
-            plt.imshow(data_augmented[:3,...].permute(1,2,0).numpy()); plt.title('NIR-R-G')
-            plt.sca(axarr[1]); 
-            plt.imshow(data_augmented[3,...].squeeze().numpy()); plt.title('DSM')
-            plt.sca(axarr[2]); 
-            plt.imshow(data_augmented[4,...].squeeze().numpy()); plt.title('nDSM')
-            plt.sca(axarr[3]); 
-            cax = plt.imshow(label_augmented.squeeze().numpy(), cmap=cMap)                # target: segmentation mask
-            cbar = f.colorbar(cax, ticks=list(range(len(dataset_train.LABEL_CLASSES))))
+            f, axarr = plt.subplots(nrows=1, ncols=4)
+            plt.sca(axarr[0])
+            plt.imshow(data_augmented[:3, ...].permute(1, 2, 0).numpy())
+            plt.title('NIR-R-G')
+            plt.sca(axarr[1])
+            plt.imshow(data_augmented[3, ...].squeeze().numpy())
+            plt.title('DSM')
+            plt.sca(axarr[2])
+            plt.imshow(data_augmented[4, ...].squeeze().numpy())
+            plt.title('nDSM')
+            plt.sca(axarr[3])
+            # target: segmentation mask
+            cax = plt.imshow(label_augmented.squeeze().numpy(), cmap=cMap)
+            cbar = f.colorbar(cax, ticks=list(
+                range(len(dataset_train.LABEL_CLASSES))))
             cbar.ax.set_yticklabels(list(dataset_train.LABEL_CLASSES))
             plt.title('Target: segmentation mask')
             plt.show()
     else:
         data_augmented = aug_data
         label_augmented = aug_trg
-        f, axarr = plt.subplots(nrows=1,ncols=4)
-        plt.sca(axarr[0]); 
-        plt.imshow(data_augmented[:3,...].permute(1,2,0).numpy()); plt.title('NIR-R-G')
-        plt.sca(axarr[1]); 
-        plt.imshow(data_augmented[3,...].squeeze().numpy()); plt.title('DSM')
-        plt.sca(axarr[2]); 
-        plt.imshow(data_augmented[4,...].squeeze().numpy()); plt.title('nDSM')
-        plt.sca(axarr[3]); 
-        cax = plt.imshow(label_augmented.squeeze().numpy(), cmap=cMap)                # target: segmentation mask
-        cbar = f.colorbar(cax, ticks=list(range(len(dataset_train.LABEL_CLASSES))))
+        f, axarr = plt.subplots(nrows=1, ncols=4)
+        plt.sca(axarr[0])
+        plt.imshow(data_augmented[:3, ...].permute(1, 2, 0).numpy())
+        plt.title('NIR-R-G')
+        plt.sca(axarr[1])
+        plt.imshow(data_augmented[3, ...].squeeze().numpy())
+        plt.title('DSM')
+        plt.sca(axarr[2])
+        plt.imshow(data_augmented[4, ...].squeeze().numpy())
+        plt.title('nDSM')
+        plt.sca(axarr[3])
+        # target: segmentation mask
+        cax = plt.imshow(label_augmented.squeeze().numpy(), cmap=cMap)
+        cbar = f.colorbar(cax, ticks=list(
+            range(len(dataset_train.LABEL_CLASSES))))
         cbar.ax.set_yticklabels(list(dataset_train.LABEL_CLASSES))
         plt.title('Target: segmentation mask')
         plt.show()
