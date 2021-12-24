@@ -1,12 +1,13 @@
 # GSUnet
 
+Gated Shape Unet for Semantic Segmentation
 Inspired from [GSCNN](https://nv-tlabs.github.io/GSCNN/)
 
 ## install
 
 Torch: https://pytorch.org/
 
-    pip install matplotlib tqdm
+    pip install matplotlib tqdm sklearn
     pip3 install opencv-python
     pip3 install -U albumentations
 

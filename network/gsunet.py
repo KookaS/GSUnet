@@ -178,32 +178,16 @@ class GSUnet(nn.Module):
         canny = torch.from_numpy(canny).to(device).float()
         #print('canny', canny.size())"""
 
-        im_arr = inputs.cpu().numpy().astype(np.float64) # computes Canny on the 5th image
-        # im_arr = np.reshape(im_arr, (x_size[0], 1, x_size[2], x_size[3])).astype(np.float64)
+        # Canny on the 5 channels after bilateral filtering
+        im_arr = inputs.cpu().numpy().astype(np.float64)
         channels = [0, 1, 2, 3, 4]  # list of selected channels for canny
         original = im_arr.copy()
         im_processed = np.zeros((x_size[0], channels.__len__(), x_size[2], x_size[3]))
         for i in range(x_size[0]):
-            # im_arr[i] /= im_arr[i].max()
-            # im_arr[i] += np.abs(im_arr[i].min())
-            # im_arr[i] *= 1000
-            """
-            maxIntensity = im_arr[i].max()
-            phi = 10.0
-            theta = 1.0
-            im_arr[i] = (maxIntensity/phi)*(im_arr[i]/(maxIntensity/theta))**2
-            """
-            im_arr[i] *= 200
-            """
-            kernel = np.ones((20,20),np.float64)/(20*20)
-            im_arr[i] = cv2.filter2D(im_arr[i],-1,kernel)
-            """   
-
             # bilateralFilter to smooth the channels
             # remove it or diminish the kernel size for real-time processing 
             for j in channels:
                 im_processed[i][j] = cv2.bilateralFilter(im_arr[i][j].astype(np.uint8), 10, 230, 300)   # source, diameter, sigma_color, sigma_space
-
         temp = im_arr
         im_arr = im_arr.astype(np.uint8)
         im_arr = im_arr.transpose((0, 2, 3, 1))
@@ -211,7 +195,6 @@ class GSUnet(nn.Module):
         for i in range(x_size[0]):
             for j in range(0, 2):
                 canny[i] += cv2.Canny(im_processed[i][j].astype(np.uint8), im_processed[i][j].min(), im_processed[i][j].max())
-
         canny = canny > 0
         canny = canny.astype(np.float64)
         canny *= 255
@@ -219,7 +202,7 @@ class GSUnet(nn.Module):
         canny = torch.from_numpy(canny).to(device).float()
 
 
-        plt.subplot(141),plt.imshow(original[1][0]) #inputs.cpu().numpy().astype(np.float64)[1, 4, :, :])
+        """plt.subplot(141),plt.imshow(original[1][0]) #inputs.cpu().numpy().astype(np.float64)[1, 4, :, :])
         plt.xticks([]), plt.yticks([])
         plt.subplot(142),plt.imshow(im_processed[1][0])
         plt.xticks([]), plt.yticks([])
@@ -227,7 +210,7 @@ class GSUnet(nn.Module):
         plt.xticks([]), plt.yticks([])
         plt.subplot(144),plt.imshow(canny.cpu().numpy().astype(np.float64)[1][0]) #inputs.cpu().numpy().astype(np.float64)[1, 4, :, :])
         plt.xticks([]), plt.yticks([])
-        plt.show()
+        plt.show()"""
 
 
         cs = self.fuse(cs)
@@ -260,9 +243,3 @@ class GSUnet(nn.Module):
         seg_out = self.conv10(c9)
 
         return seg_out, edge_out
-        """
-        if self.training:
-            return self.criterion((seg_out, edge_out), gts)              
-        else:
-            return seg_out, edge_out
-        """

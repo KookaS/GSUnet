@@ -9,8 +9,6 @@ from network.device import get_device
 
 
 """
-criterion = nn.CrossEntropyLoss()
-
 criterion_img_wt_loss = ImageBasedCrossEntropyLoss2d(
             classes=args.dataset_cls.num_classes, size_average=True,
             ignore_index=args.dataset_cls.ignore_label, 
@@ -248,20 +246,13 @@ def _one_hot_embedding(labels, num_classes):
 def gradient_central_diff(input, cuda):
     return input, input
 
+def compute_grad_mag(E, cuda=False):
+    E_ = convTri(E, 4, cuda)
+    Ox, Oy = numerical_gradients_2d(E_, cuda)
+    mag = torch.sqrt(torch.mul(Ox, Ox) + torch.mul(Oy, Oy) + 1e-6)
+    mag = mag / mag.max()
 
-def numerical_gradients_2d(input, cuda=False):
-    """
-    numerical gradients implementation over batches using torch group conv operator.
-    the single sided differences are re-computed later.
-    it matches np.gradient(image) with the difference than here output=x,y for an image while there output=y,x
-    :param input: N,C,H,W
-    :param cuda: whether or not use cuda
-    :return: X,Y
-    """
-    n, c, h, w = input.shape
-    assert h > 1 and w > 1
-    x, y = gradient_central_diff(input, cuda)
-    return x, y
+    return mag
 
 
 def convTri(input, r, cuda=False):
@@ -277,6 +268,49 @@ def convTri(input, r, cuda=False):
         raise ValueError()
     n, c, h, w = input.shape
     return input
+    f = list(range(1, r + 1)) + [r + 1] + list(reversed(range(1, r + 1)))
+    kernel = torch.Tensor([f]) / (r + 1) ** 2
+    if type(cuda) is int:
+        if cuda != -1:
+            kernel = kernel.cuda(device=cuda)
+    else:
+        if cuda is True:
+            kernel = kernel.cuda()
+
+    # padding w
+    input_ = F.pad(input, (1, 1, 0, 0), mode='replicate')
+    input_ = F.pad(input_, (r, r, 0, 0), mode='reflect')
+    input_ = [input_[:, :, :, :r], input, input_[:, :, :, -r:]]
+    input_ = torch.cat(input_, 3)
+    t = input_
+
+    # padding h
+    input_ = F.pad(input_, (0, 0, 1, 1), mode='replicate')
+    input_ = F.pad(input_, (0, 0, r, r), mode='reflect')
+    input_ = [input_[:, :, :r, :], t, input_[:, :, -r:, :]]
+    input_ = torch.cat(input_, 2)
+
+    output = F.conv2d(input_,
+                      kernel.unsqueeze(0).unsqueeze(0).repeat([c, 1, 1, 1]),
+                      padding=0, groups=c)
+    output = F.conv2d(output,
+                      kernel.t().unsqueeze(0).unsqueeze(0).repeat([c, 1, 1, 1]),
+                      padding=0, groups=c)
+    return output
+
+def numerical_gradients_2d(input, cuda=False):
+    """
+    numerical gradients implementation over batches using torch group conv operator.
+    the single sided differences are re-computed later.
+    it matches np.gradient(image) with the difference than here output=x,y for an image while there output=y,x
+    :param input: N,C,H,W
+    :param cuda: whether or not use cuda
+    :return: X,Y
+    """
+    n, c, h, w = input.shape
+    assert h > 1 and w > 1
+    x, y = gradient_central_diff(input, cuda)
+    return x, y
 
 
 def _sample_gumbel(shape, eps=1e-10):
@@ -303,16 +337,6 @@ def _gumbel_softmax_sample(logits, tau=1, eps=1e-10):
     gumbel_noise = _sample_gumbel(logits.size(), eps=eps)
     y = logits + gumbel_noise
     return F.softmax(y / tau, 1)
-
-
-def compute_grad_mag(E, cuda=False):
-    E_ = convTri(E, 4, cuda)
-    Ox, Oy = numerical_gradients_2d(E_, cuda)
-    mag = torch.sqrt(torch.mul(Ox, Ox) + torch.mul(Oy, Oy) + 1e-6)
-    mag = mag / mag.max()
-
-    return mag
-
 
 class DualTaskLoss(nn.Module):
     def __init__(self, cuda=False):

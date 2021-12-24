@@ -1,16 +1,8 @@
-import sys
 import torch
-import os
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
-
-from database.vaihingen import VaihingenDataset, visualise, load_dataloader
-from network.gsunet import GSUnet
-from network.loss import JointEdgeSegLoss
+from database.vaihingen import visualise, load_dataloader
 from network.optimizer import setup_optimiser
-from network.model import test_model, load_model, save_model
+from network.model import test_model, load_model, save_model, evaluate_model
 from epochs import train_epoch, validate_epoch
-from torch import optim
 from network.device import get_device
 
 def main():
@@ -64,6 +56,15 @@ def main():
         # save model
         epoch += 1
         save_model(model, epoch)
+
+    # visualize predictions for a number of epochs
+    dl_val_single = load_dataloader(1, 'val')
+
+    # load model states at different epochs
+    epochs = [0, 15, 20, 'latest']
+    n_channels = 5
+    n_classes = 6
+    evaluate_model(dl_val_single,n_channels, n_classes, epochs, dataset_train=dl_train,numImages=5, device = device)
 
 
 if __name__ == '__main__':

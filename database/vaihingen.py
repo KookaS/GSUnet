@@ -11,7 +11,6 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 
-augmentation_visu = False
 data_root = 'dataset_512x512_full'
 
 
