@@ -3,9 +3,10 @@ import torch.nn as nn
 from torch.nn.modules.conv import _ConvNd
 from torch.nn.modules.utils import _pair
 import torch.nn.functional as F
+from network.device import get_device
 # import encoding
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = get_device()
 
 class DoubleConv(nn.Module):
     def __init__(self, in_ch, out_ch):

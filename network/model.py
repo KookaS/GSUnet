@@ -37,7 +37,6 @@ def test_model():
     # print('data: ', data.size())
     # data  = data.to(device='cuda')
 
-    # error is normal: two devices, cpu and cuda:0!
     pred = model(data)
 
     """

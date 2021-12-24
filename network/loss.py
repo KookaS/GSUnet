@@ -1,9 +1,11 @@
 import logging
 import torch
 from torch import nn
+# from torch._C import get_device
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
+from network.device import get_device
 
 
 """
@@ -12,20 +14,20 @@ criterion = nn.CrossEntropyLoss()
 criterion_img_wt_loss = ImageBasedCrossEntropyLoss2d(
             classes=args.dataset_cls.num_classes, size_average=True,
             ignore_index=args.dataset_cls.ignore_label, 
-            upper_bound=args.wt_bound).cuda()
+            upper_bound=args.wt_bound).to(device)
 
-criterion_crossentropy_loss = CrossEntropyLoss2d(size_average=True, ignore_index=args.dataset_cls.ignore_label).cuda()
+criterion_crossentropy_loss = CrossEntropyLoss2d(size_average=True, ignore_index=args.dataset_cls.ignore_label).to(device)
 
 criterion_joint_edgeseg_loss = JointEdgeSegLoss(classes=args.dataset_cls.num_classes,
            ignore_index=args.dataset_cls.ignore_label, upper_bound=args.wt_bound,
-           edge_weight=args.edge_weight, seg_weight=args.seg_weight, att_weight=args.att_weight, dual_weight=args.dual_weight).cuda()
+           edge_weight=args.edge_weight, seg_weight=args.seg_weight, att_weight=args.att_weight, dual_weight=args.dual_weight).to(device)
 
 criterion_val = JointEdgeSegLoss(classes=args.dataset_cls.num_classes, mode='val',
        ignore_index=args.dataset_cls.ignore_label, upper_bound=args.wt_bound,
-       edge_weight=args.edge_weight, seg_weight=args.seg_weight).cuda()
+       edge_weight=args.edge_weight, seg_weight=args.seg_weight).to(device)
 """
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = get_device()
 
 class JointEdgeSegLoss(nn.Module):
     def __init__(self, classes, weight=None, reduction='mean', ignore_index=255,
@@ -35,11 +37,11 @@ class JointEdgeSegLoss(nn.Module):
         self.num_classes = classes
         if mode == 'train':
             self.seg_loss = ImageBasedCrossEntropyLoss2d(
-                classes=classes, ignore_index=ignore_index, upper_bound=upper_bound).cuda()
+                classes=classes, ignore_index=ignore_index, upper_bound=upper_bound).to(device)
         elif mode == 'val':
           # reduction='mean' instead of size_average
             self.seg_loss = CrossEntropyLoss2d(size_average=True,
-                                               ignore_index=ignore_index).cuda()
+                                               ignore_index=ignore_index).to(device)
 
         self.edge_weight = edge_weight
         self.seg_weight = seg_weight
@@ -84,7 +86,7 @@ class JointEdgeSegLoss(nn.Module):
         weight[ignore_index] = 0
 
         weight = torch.from_numpy(weight)
-        weight = weight.cuda()
+        weight = weight.to(device)
         # reduction='mean' instead of size_average
         loss = F.binary_cross_entropy_with_logits(
             log_p, target_t, weight, size_average=True)
@@ -172,13 +174,13 @@ class ImageBasedCrossEntropyLoss2d(nn.Module):
 
         if self.batch_weights:
             weights = self.calculateWeights(target_cpu)
-            self.nll_loss.weight = torch.Tensor(weights).cuda()
+            self.nll_loss.weight = torch.Tensor(weights).to(device)
 
         loss = 0.0
         for i in [1, 1]:# range(0, inputs.shape[0]):    # 'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
             if not self.batch_weights:
                 weights = self.calculateWeights(target_cpu[i])
-                self.nll_loss.weight = torch.Tensor(weights).cuda()
+                self.nll_loss.weight = torch.Tensor(weights).to(device)
 
             # loss += self.nll_loss(F.log_softmax(inputs[i].unsqueeze(0)), targets[i].unsqueeze(0))
             for j in range(0, inputs[i].shape[0]):
@@ -236,7 +238,7 @@ def _one_hot_embedding(labels, num_classes):
       (tensor) encoded labels, sized [N, #classes].
     """
 
-    y = torch.eye(num_classes).cuda()
+    y = torch.eye(num_classes).to(device)
     """print(np.squeeze(labels, axis=1).shape)
     
     print(y[np.squeeze(labels, axis=1)].permute(0, 3, 1, 2).shape)"""
@@ -285,7 +287,7 @@ def _sample_gumbel(shape, eps=1e-10):
     https://github.com/ericjang/gumbel-softmax/blob/3c8584924603869e90ca74ac20a6a03d99a91ef9/Categorical%20VAE.ipynb ,
     (MIT license)
     """
-    U = torch.rand(shape).cuda()
+    U = torch.rand(shape).to(device)
     return - torch.log(eps - torch.log(U + eps))
 
 
@@ -338,7 +340,7 @@ class DualTaskLoss(nn.Module):
         # print('!!!!ignore_mask', ignore_mask.shape)
 
         input_logits = torch.where(ignore_mask.view(N, 1, H, W).expand(N, C, H, W),
-                                   torch.zeros(N, C, H, W).cuda(),
+                                   torch.zeros(N, C, H, W).to(device),
                                    input_logits)
 
         # print('!!!!input_logits', input_logits.shape)
@@ -352,7 +354,7 @@ class DualTaskLoss(nn.Module):
         gt_semantic_masks = gts.detach().long()
         # print('!!!!gt_semantic_masks', gt_semantic_masks.shape)
         gt_semantic_masks = torch.where(ignore_mask, torch.zeros(
-            N, 1, H, W).long().cuda(), gt_semantic_masks).long()
+            N, 1, H, W).long().to(device), gt_semantic_masks).long()
 
         # print('!!!!gt_semantic_masks', gt_semantic_masks.shape)
         gt_semantic_masks = _one_hot_embedding(gt_semantic_masks, C).detach()

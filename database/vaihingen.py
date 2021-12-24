@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 
 augmentation_visu = False
+data_root = 'dataset_512x512_full'
 
 
 class VaihingenDataset(dataset.Dataset):
@@ -109,7 +110,7 @@ class VaihingenDataset(dataset.Dataset):
 
 # we also create a function for the data loader here (see Section 2.6 in Exercise 6)
 def load_dataloader(batch_size, split):
-    data_root = 'dataset_512x512_full'
+    
     return DataLoader(
         VaihingenDataset(os.path.join(data_root, split)),
         batch_size=batch_size,
@@ -125,7 +126,6 @@ def visualise():
     #discrete color scheme
     cMap = ListedColormap(['black', 'grey', 'lawngreen', 'darkgreen', 'orange', 'red'])     #  'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
 
-    data_root = 'dataset_512x512_full'
     dataset_train = VaihingenDataset(os.path.join(data_root, 'train'))
     print(dataset_train)
 

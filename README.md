@@ -4,8 +4,13 @@ Inspired from [GSCNN](https://nv-tlabs.github.io/GSCNN/)
 
 ## install
 
-    pip install torch torchvision matplotlib tqdm
-    sudo pip3 install opencv-python
+Torch: https://pytorch.org/
+
+    pip install matplotlib tqdm
+    pip3 install opencv-python
+    pip3 install -U albumentations
+
+CUDA : https://pytorch.org/get-started/locally/
 
 ## dataset
 

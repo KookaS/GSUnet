@@ -11,25 +11,20 @@ from network.optimizer import setup_optimiser
 from network.model import test_model, load_model, save_model
 from epochs import train_epoch, validate_epoch
 from torch import optim
+from network.device import get_device
 
 def main():
 
-    print(torch.cuda.is_available())
     seed = 323444           # the seed value used to initialise the random number generator of PyTorch
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
 
     # visualise()
-
-    """pred = test_model()
-    print(pred)"""
-
-    n_channels = 5  # NIR - R - G - DSM - nDSM
-    n_classes = 6  #'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
-    criterion_val = JointEdgeSegLoss(classes=n_classes, mode='val').cuda()
+    # pred = test_model()
 
     # define hyperparameters
-    device = 'cuda'
+    device = get_device()
+    print('device used for computation: ', device)
     start_epoch = 0        # set to 0 to start from scratch again or to 'latest' to continue training from saved checkpoint
     batch_size = 2
     learning_rate = 0.1
@@ -39,19 +34,17 @@ def main():
     n_channels = 5  # NIR - R - G - DSM - nDSM
     n_classes = 6  #'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
 
-
-
     # initialise data loaders
     dl_train = load_dataloader(batch_size, 'train')
-
     dl_val = load_dataloader(batch_size, 'val')
 
     # load model
-
     model, epoch = load_model(n_channels, n_classes,epoch=start_epoch)
     optimi = setup_optimiser(model, learning_rate, momentum, weight_decay)
+    
     # multiply learning rate by 0.1 after 30% of epochs
-    #scheduler = optim.lr_scheduler.StepLR(optimi, step_size=int(0.3*num_epochs), gamma=0.1)
+    # scheduler = optim.lr_scheduler.StepLR(optimi, step_size=int(0.3*num_epochs), gamma=0.1)
+
     # do epochs
     while epoch < num_epochs:
 

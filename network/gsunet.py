@@ -9,12 +9,12 @@ import matplotlib.pyplot as plt
 from network.other import BasicBlock, DoubleConv, GatedSpatialConv2d, _AtrousSpatialPyramidPoolingModule
 
 from pylab import arange
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+from network.device import get_device
 
 class GSUnet(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(GSUnet, self).__init__()
+        device = get_device()
 
         # down
         self.conv1 = DoubleConv(in_ch, 64)
@@ -72,6 +72,7 @@ class GSUnet(nn.Module):
 
     def forward(self, inputs, gts=None):
         x_size = inputs.size()
+        device = get_device()
         inputs = inputs.to(device)
 
         # down
@@ -177,9 +178,11 @@ class GSUnet(nn.Module):
         canny = torch.from_numpy(canny).to(device).float()
         #print('canny', canny.size())"""
 
-        im_arr = inputs[:, 4, :, :].cpu().numpy().astype(np.float64) # computes Canny on the 5th image
-        im_arr = np.reshape(im_arr, (x_size[0], 1, x_size[2], x_size[3])).astype(np.float64)
+        im_arr = inputs.cpu().numpy().astype(np.float64) # computes Canny on the 5th image
+        # im_arr = np.reshape(im_arr, (x_size[0], 1, x_size[2], x_size[3])).astype(np.float64)
+        channels = [0, 1, 2, 3, 4]  # list of selected channels for canny
         original = im_arr.copy()
+        im_processed = np.zeros((x_size[0], channels.__len__(), x_size[2], x_size[3]))
         for i in range(x_size[0]):
             # im_arr[i] /= im_arr[i].max()
             # im_arr[i] += np.abs(im_arr[i].min())
@@ -194,25 +197,35 @@ class GSUnet(nn.Module):
             """
             kernel = np.ones((20,20),np.float64)/(20*20)
             im_arr[i] = cv2.filter2D(im_arr[i],-1,kernel)
-            """
-            im_arr[i] = cv2.bilateralFilter(im_arr[i][0].astype(np.uint8), 15, 200, 100)   # source, diameter, sigma_color, sigma_space
+            """   
+
+            # bilateralFilter to smooth the channels
+            # remove it or diminish the kernel size for real-time processing 
+            for j in channels:
+                im_processed[i][j] = cv2.bilateralFilter(im_arr[i][j].astype(np.uint8), 10, 230, 300)   # source, diameter, sigma_color, sigma_space
+
         temp = im_arr
         im_arr = im_arr.astype(np.uint8)
         im_arr = im_arr.transpose((0, 2, 3, 1))
         canny = np.zeros((x_size[0], x_size[2], x_size[3]))
         for i in range(x_size[0]):
-            canny[i] = cv2.Canny(im_arr[i], im_arr[i].min(), im_arr[i].max())  
+            for j in range(0, 2):
+                canny[i] += cv2.Canny(im_processed[i][j].astype(np.uint8), im_processed[i][j].min(), im_processed[i][j].max())
+
+        canny = canny > 0
+        canny = canny.astype(np.float64)
+        canny *= 255
         canny = np.reshape(canny, (x_size[0], 1, x_size[2], x_size[3]))
         canny = torch.from_numpy(canny).to(device).float()
 
 
         plt.subplot(141),plt.imshow(original[1][0]) #inputs.cpu().numpy().astype(np.float64)[1, 4, :, :])
         plt.xticks([]), plt.yticks([])
-        plt.subplot(142),plt.imshow(temp[1][0])
+        plt.subplot(142),plt.imshow(im_processed[1][0])
         plt.xticks([]), plt.yticks([])
-        plt.subplot(143),plt.imshow(canny.cpu().numpy().astype(np.float64)[1][0])
+        plt.subplot(143),plt.imshow(im_processed[1][4])
         plt.xticks([]), plt.yticks([])
-        plt.subplot(144),plt.imshow(inputs.cpu().numpy().astype(np.float64)[1, 0, :, :])
+        plt.subplot(144),plt.imshow(canny.cpu().numpy().astype(np.float64)[1][0]) #inputs.cpu().numpy().astype(np.float64)[1, 4, :, :])
         plt.xticks([]), plt.yticks([])
         plt.show()
 
@@ -253,6 +266,3 @@ class GSUnet(nn.Module):
         else:
             return seg_out, edge_out
         """
-
-"""
-"""

@@ -1,11 +1,10 @@
+from torch.nn.modules import loss
 from tqdm.notebook import trange      # pretty progress bar
 import matplotlib.pyplot as plt
 from network.loss import JointEdgeSegLoss
 import torch
 import numpy as np
 import cv2
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def train_epoch(data_loader, model, optimiser, device):
@@ -50,9 +49,9 @@ def train_epoch(data_loader, model, optimiser, device):
         plt.show()"""
 
         edgemask = torch.from_numpy(canny).to(
-            device).float()   # .cuda().float() #.float()
+            device).float()
         segmask = torch.from_numpy(segmask).to(
-            device).float()  # .cuda().float() #.float()
+            device).float()
         # print('segmask', segmask.shape)
         # print('edgemask', edgemask.size())
 
@@ -76,10 +75,11 @@ def train_epoch(data_loader, model, optimiser, device):
             (segin, edgein), (segmask, edgemask))
 
         # backward pass
-        loss_dict['seg_loss'].backward()
-        """loss_dict['edge_loss'].backward()
-        loss_dict['att_loss'].backward()
-        loss_dict['dual_loss'].backward()"""
+        loss_combined = loss_dict['seg_loss']
+        loss_combined += loss_dict['edge_loss']
+        loss_combined += loss_dict['att_loss']
+        loss_combined += loss_dict['dual_loss']
+        loss_combined.backward()
 
         # parameter update
         optimiser.step()
@@ -149,9 +149,9 @@ def validate_epoch(data_loader, model, device):       # note: no optimiser neede
         plt.show()"""
 
         edgemask = torch.from_numpy(canny).to(
-            device).float()   # .cuda().float() #.float()
+            device).float()
         segmask = torch.from_numpy(segmask).to(
-            device).float()  # .cuda().float() #.float()
+            device).float()
         # print('segmask', segmask.shape)
         # print('edgemask', edgemask.size())
 
