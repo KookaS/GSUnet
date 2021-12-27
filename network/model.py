@@ -58,8 +58,6 @@ def test_model():
     """
     return pred
 
-
-
 def evaluate_model(dataLoader, n_channels, n_classes, epochs, show_metrics=False, numImages=5, device=None):
     models = [load_model(n_channels, n_classes, e)[0] for e in epochs]
     numModels = len(models)
@@ -87,41 +85,7 @@ def evaluate_model(dataLoader, n_channels, n_classes, epochs, show_metrics=False
 
                 data, segmask = data.to(device), labels.to(device)
                 segin, edgein = model(data.to(device))
-                segin = segin.data.max(1)[1].cpu()
-                
-                """# get the label (i.e., the maximum position for each pixel along the class dimension)
-                seginhat = segin.cpu().numpy().astype(np.float64).transpose((0, 2, 3, 1))
-                print('seginhat', seginhat.shape)
-                seginhat = torch.from_numpy(seginhat).to(device).float()
-                print('seginhat', seginhat.shape)
-                seginhat = torch.argmax(seginhat, dim=1)
-                print('seginhat', seginhat.shape)
-                segin = seginhat.cpu().numpy().astype(np.float64).transpose((0, 2, 3, 1))
-                print('segin', segin.shape)
-
-                edgeinhat = segin.cpu().numpy().astype(np.float64).transpose((0, 2, 3, 1))
-                edgeinhat = torch.from_numpy(edgeinhat).to(device).float()
-                edgeinhat = torch.argmax(edgeinhat, dim=1)
-                edgein = edgeinhat.cpu().numpy().astype(np.float64).transpose((0, 2, 3, 1))
-
-                    for i in range(segin.shape[0]):
-                    seginhat = torch.argmax(segin, dim=1)
-                    segin[i] = seginhat.transpose((2, 0, 1))
-
-                    temp = edgein[i].transpose((1,2,0))
-                    edgeinhat = torch.argmax(temp, dim=1)
-                    edgein[i] = edgeinhat.transpose((2, 0, 1))
-
-                plt.subplot(141),plt.imshow(segin[1][0].data.cpu().numpy())
-                plt.title('segin Image'),plt.xticks([]), plt.yticks([])
-                plt.subplot(142),plt.imshow(edgein[1][0].data.cpu().numpy())
-                plt.title('edgein Image'),plt.xticks([]), plt.yticks([])
-                plt.subplot(143),plt.imshow(segmask[1][0].data.cpu().numpy())
-                plt.title('segmask Image'),plt.xticks([]), plt.yticks([])
-                plt.subplot(144),plt.imshow(labels[1][0].data.cpu().numpy())
-                plt.title('edgemask Image'),plt.xticks([]), plt.yticks([])
-                plt.show()
-                """
+                segin = segin.data.max(1)[1].cpu()  #take only the 2nd image of the batch
 
                 list_predictions.append(segin[0, ...].cpu().numpy().flatten())
                 all_predictions = np.concatenate(list_predictions)
@@ -132,15 +96,6 @@ def evaluate_model(dataLoader, n_channels, n_classes, epochs, show_metrics=False
                 # plot model predictions
                 ax[mIdx+1].imshow(segin[0, ...].cpu().numpy(), cmap=cMap)
                 ax[mIdx+1].axis('off')
-                """
-                if idx == 0:
-                    # cax = ax[mIdx+1].set_title(f'Epoch {epochs[mIdx]}')
-                    # cax = plt.axes(list(map(float, list(get_labels()))))
-                    cbar =  plt.colorbar(ax[0])# plt.colorbar(cax=cax, ticks=list(range(len(get_labels()))))
-                    cbar.ax.get_yaxis().set_ticks([])
-                    for j, lab in enumerate(list(get_labels())):
-                        cbar.ax.text(.5, (2 * j + 1) / len(get_labels()), lab, ha='center', va='center')
-                """
 
         if show_metrics:
             _, ax = plt.subplots(nrows=1, ncols=numModels, figsize = (20, 20))
@@ -149,9 +104,7 @@ def evaluate_model(dataLoader, n_channels, n_classes, epochs, show_metrics=False
           
                 ax[mIdx].matshow(conf_matrix_one, cmap=plt.cm.Blues, alpha=0.5)
 
-
                 iou, recall, precision, f1, kappa = compute_metrics(conf_matrix_one)
-                
                 
                 for i in range(conf_matrix_one.shape[0]):
                     for j in range(conf_matrix_one.shape[1]):

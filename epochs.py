@@ -112,13 +112,7 @@ def validate_epoch(data_loader, model, device):       # note: no optimiser neede
 
     # iterate over dataset
     with tqdm(range(len(data_loader))) as pBar:
-        i_security = 0
         for idx, (data, target) in enumerate(data_loader):
-
-            # TODO remove
-            i_security += 1
-            if i_security >= len(data_loader)-1:
-                break
 
             # put data and target onto correct device
             data, segmask = data.to(device), target.to(device)

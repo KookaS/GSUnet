@@ -65,8 +65,5 @@ def main():
     n_classes = 6
     evaluate_model(dl_val_single, n_channels, n_classes,epochs, show_metrics = True, numImages=15,device = device)
     
-    
-
-
 if __name__ == '__main__':
     main()

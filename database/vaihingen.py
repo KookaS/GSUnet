@@ -131,7 +131,6 @@ def visualise():
                           'darkgreen', 'orange', 'red'])
 
     dataset_train = VaihingenDataset(os.path.join(data_root, 'train'))
-    print(dataset_train)
 
     # 196 is good
     aug_data, aug_trg = dataset_train.__getitem__(196)
