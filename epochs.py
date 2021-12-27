@@ -154,7 +154,6 @@ def validate_epoch(data_loader, model, device):       # note: no optimiser neede
             loss_combined += loss_dict['edge_loss']
             loss_combined += loss_dict['att_loss']
             loss_combined += loss_dict['dual_loss']
-            loss_combined.backward()
 
             # stats update
             loss_total += loss_combined.item()
