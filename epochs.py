@@ -27,7 +27,7 @@ def train_epoch(data_loader, model, optimiser, device):
 
             #to prevent failing on the last images which is defectuous in my dataset
             i_security += 1
-            if i_security >= 2:
+            if i_security >= len(data_loader)-1:
                 break
 
             # put data and target onto correct device
@@ -112,7 +112,13 @@ def validate_epoch(data_loader, model, device):       # note: no optimiser neede
 
     # iterate over dataset
     with tqdm(range(len(data_loader))) as pBar:
+        i_security = 0
         for idx, (data, target) in enumerate(data_loader):
+
+            # TODO remove
+            i_security += 1
+            if i_security >= len(data_loader)-1:
+                break
 
             # put data and target onto correct device
             data, segmask = data.to(device), target.to(device)
@@ -149,6 +155,7 @@ def validate_epoch(data_loader, model, device):       # note: no optimiser neede
             loss_dict = criterion_joint_edgeseg_loss(
                 (segin, edgein), (segmask, edgemask))
 
+            """
             plt.subplot(141),plt.imshow(segin[1][0].data.cpu().numpy())
             plt.title('segin Image'),plt.xticks([]), plt.yticks([])
             plt.subplot(142),plt.imshow(edgein[1][0].data.cpu().numpy())
@@ -158,6 +165,7 @@ def validate_epoch(data_loader, model, device):       # note: no optimiser neede
             plt.subplot(144),plt.imshow(edgemask[1][0].data.cpu().numpy())
             plt.title('edgemask Image'),plt.xticks([]), plt.yticks([])
             plt.show()
+            """
 
             # backward pass
             loss_combined = loss_dict['seg_loss']
@@ -184,4 +192,4 @@ def validate_epoch(data_loader, model, device):       # note: no optimiser neede
     loss_total /= len(data_loader)
     oa_total /= len(data_loader)
 
-    return model, loss_total, oa_total
+    return loss_total, oa_total

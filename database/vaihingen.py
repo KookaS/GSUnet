@@ -14,6 +14,9 @@ from matplotlib.colors import ListedColormap
 # absolute path to the dataset
 data_root = 'dataset_512x512_full'
 
+# label class names
+LABEL_CLASSES = ('Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter')
+
 
 class VaihingenDataset(dataset.Dataset):
     '''
@@ -34,11 +37,6 @@ class VaihingenDataset(dataset.Dataset):
          37.040640374137475),    # IR-R-G tiles
         (6.485453035150256),                                            # DSM
         (36.040236155124326)                                            # nDSM
-    )
-
-    # label class names
-    LABEL_CLASSES = (
-        'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
     )
 
     def __init__(self, data_root, transform=None):
@@ -122,6 +120,9 @@ def load_dataloader(batch_size, split):
         shuffle=(split == 'train'),
         num_workers=2                   # perform data loading with two CPU threads
     )
+
+def get_labels():
+    return LABEL_CLASSES
 
 
 def visualise():

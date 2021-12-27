@@ -7,9 +7,11 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import math
 import pandas as pd
-# from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 import numpy as np
 from network.metrics import compute_metrics
+import platform
+from database.vaihingen import get_labels
 
 os.makedirs('cnn_states/GSUnet', exist_ok=True)
 
@@ -18,8 +20,11 @@ def load_model(n_channels=5, n_classes=6, epoch='latest'):
     model = GSUnet(n_channels, n_classes)
     modelStates = glob.glob('cnn_states/GSUnet/*.pth')
     if len(modelStates) and (epoch == 'latest' or epoch > 0):
-        modelStates = [int(m.replace(
-            'cnn_states/GSUnet/', '').replace('.pth', '')) for m in modelStates]
+
+        if platform.system() == 'Windows':
+            modelStates = [m.replace('cnn_states/GSUnet', '')[1:].replace('.pth', '') for m in modelStates]
+        else:
+            modelStates = [int(m.replace('cnn_states/GSUnet/', '').replace('.pth', '')) for m in modelStates]
         if epoch == 'latest':
             epoch = max(modelStates)
         stateDict = torch.load(
@@ -63,7 +68,7 @@ def evaluate_model(dataLoader, n_channels, n_classes, epochs, show_metrics=False
         if idx == numImages:
             break
 
-        _, ax = plt.subplots(nrows=1, ncols=numModels+1, figsize=(10, 10))
+        f, ax = plt.subplots(nrows=1, ncols=numModels+1, figsize=(10, 10))
 
         list_gt_labels.append(labels[0, ...].cpu().numpy().flatten())
 
@@ -82,8 +87,9 @@ def evaluate_model(dataLoader, n_channels, n_classes, epochs, show_metrics=False
 
                 data, segmask = data.to(device), labels.to(device)
                 segin, edgein = model(data.to(device))
+                segin = segin.data.max(1)[1].cpu()
                 
-                # get the label (i.e., the maximum position for each pixel along the class dimension)
+                """# get the label (i.e., the maximum position for each pixel along the class dimension)
                 seginhat = segin.cpu().numpy().astype(np.float64).transpose((0, 2, 3, 1))
                 print('seginhat', seginhat.shape)
                 seginhat = torch.from_numpy(seginhat).to(device).float()
@@ -98,13 +104,13 @@ def evaluate_model(dataLoader, n_channels, n_classes, epochs, show_metrics=False
                 edgeinhat = torch.argmax(edgeinhat, dim=1)
                 edgein = edgeinhat.cpu().numpy().astype(np.float64).transpose((0, 2, 3, 1))
 
-                """for i in range(segin.shape[0]):
+                    for i in range(segin.shape[0]):
                     seginhat = torch.argmax(segin, dim=1)
                     segin[i] = seginhat.transpose((2, 0, 1))
 
                     temp = edgein[i].transpose((1,2,0))
                     edgeinhat = torch.argmax(temp, dim=1)
-                    edgein[i] = edgeinhat.transpose((2, 0, 1))"""
+                    edgein[i] = edgeinhat.transpose((2, 0, 1))
 
                 plt.subplot(141),plt.imshow(segin[1][0].data.cpu().numpy())
                 plt.title('segin Image'),plt.xticks([]), plt.yticks([])
@@ -115,23 +121,29 @@ def evaluate_model(dataLoader, n_channels, n_classes, epochs, show_metrics=False
                 plt.subplot(144),plt.imshow(labels[1][0].data.cpu().numpy())
                 plt.title('edgemask Image'),plt.xticks([]), plt.yticks([])
                 plt.show()
+                """
 
                 list_predictions.append(segin[0, ...].cpu().numpy().flatten())
                 all_predictions = np.concatenate(list_predictions)
                 all_gt_labels = np.concatenate(list_gt_labels)
-                # accuracy.append(accuracy_score(all_gt_labels, all_predictions))
-                # conf_matrix.append(confusion_matrix(all_gt_labels, all_predictions, labels=[0, 1, 2, 3, 4, 5]))
+                accuracy.append(accuracy_score(all_gt_labels, all_predictions))
+                conf_matrix.append(confusion_matrix(all_gt_labels, all_predictions, labels=[0, 1, 2, 3, 4, 5]))
 
                 # plot model predictions
                 ax[mIdx+1].imshow(segin[0, ...].cpu().numpy(), cmap=cMap)
                 ax[mIdx+1].axis('off')
+                """
                 if idx == 0:
-                    cax = ax[mIdx+1].set_title(f'Epoch {epochs[mIdx]}')
-                   # cbar = f.colorbar(cax, ticks=list(range(len(dataset_train.LABEL_CLASSES))))
-                    # cbar.ax.set_yticklabels(list(dataset_train.LABEL_CLASSES))
+                    # cax = ax[mIdx+1].set_title(f'Epoch {epochs[mIdx]}')
+                    # cax = plt.axes(list(map(float, list(get_labels()))))
+                    cbar =  plt.colorbar(ax[0])# plt.colorbar(cax=cax, ticks=list(range(len(get_labels()))))
+                    cbar.ax.get_yaxis().set_ticks([])
+                    for j, lab in enumerate(list(get_labels())):
+                        cbar.ax.text(.5, (2 * j + 1) / len(get_labels()), lab, ha='center', va='center')
+                """
 
         if show_metrics:
-            #_, ax = plt.subplots(nrows=1, ncols=numModels, figsize = (20, 20))
+            _, ax = plt.subplots(nrows=1, ncols=numModels, figsize = (20, 20))
             for mIdx, model in enumerate(models):
                 conf_matrix_one = conf_matrix[mIdx]
           
@@ -157,3 +169,4 @@ def evaluate_model(dataLoader, n_channels, n_classes, epochs, show_metrics=False
                 axm.axis('tight')
                 axm.axis('off')
                 axm.table(cellText=df.values,colLabels=df.columns,rowLabels=["IoU","F1","Kappa"],loc="center")
+        plt.show()

@@ -44,14 +44,14 @@ def main():
         model, loss_train, oa_train = train_epoch(dl_train, model, optimi, device)
 
         # validation
-        # loss_val, oa_val = validate_epoch(dl_val, model, device)
+        loss_val, oa_val = validate_epoch(dl_val, model, device)
 
         # print stats
-        """print('[Ep. {}/{}] Loss train: {:.2f}, val: {:.2f}; OA train: {:.2f}, val: {:.2f}'.format(
+        print('[Ep. {}/{}] Loss train: {:.2f}, val: {:.2f}; OA train: {:.2f}, val: {:.2f}'.format(
             epoch+1, num_epochs,
             loss_train, loss_val,
             100*oa_train, 100*oa_val
-        ))"""
+        ))
 
         # save model
         epoch += 1
