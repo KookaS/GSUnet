@@ -149,18 +149,6 @@ def validate_epoch(data_loader, model, device):       # note: no optimiser neede
             loss_dict = criterion_joint_edgeseg_loss(
                 (segin, edgein), (segmask, edgemask))
 
-            """
-            plt.subplot(141),plt.imshow(segin[1][0].data.cpu().numpy())
-            plt.title('segin Image'),plt.xticks([]), plt.yticks([])
-            plt.subplot(142),plt.imshow(edgein[1][0].data.cpu().numpy())
-            plt.title('edgein Image'),plt.xticks([]), plt.yticks([])
-            plt.subplot(143),plt.imshow(segmask[1][0].data.cpu().numpy())
-            plt.title('segmask Image'),plt.xticks([]), plt.yticks([])
-            plt.subplot(144),plt.imshow(edgemask[1][0].data.cpu().numpy())
-            plt.title('edgemask Image'),plt.xticks([]), plt.yticks([])
-            plt.show()
-            """
-
             # backward pass
             loss_combined = loss_dict['seg_loss']
             loss_combined += loss_dict['edge_loss']
