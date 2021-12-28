@@ -61,65 +61,71 @@ def test_model():
 def evaluate_model(dataLoader, n_channels, n_classes, epochs, show_metrics=False, numImages=5, device=None):
     models = [load_model(n_channels, n_classes, e)[0] for e in epochs]
     numModels = len(models)
+    cMap = ListedColormap(['black', 'grey', 'lawngreen', 'darkgreen', 'orange',
+                            'red'])  # 'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
     for idx, (data, labels) in enumerate(dataLoader):
         list_gt_labels = []
+        if idx == 0:
+            continue
         if idx == numImages:
             break
 
-        f, ax = plt.subplots(nrows=1, ncols=numModels+1, figsize=(10, 10))
+        f, ax = plt.subplots(nrows=1, ncols=numModels + 1, figsize=(15, 15))
 
         list_gt_labels.append(labels[0, ...].cpu().numpy().flatten())
 
         # plot ground truth
-        cMap = ListedColormap(['black', 'grey', 'lawngreen', 'darkgreen', 'orange', 'red'])     #  'Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter'
         ax[0].imshow(labels[0, ...].cpu().numpy(), cmap=cMap)
         ax[0].axis('off')
-        if idx == 0:
-            ax[0].set_title('Ground Truth')
+        ax[0].set_title('Ground Truth')
         conf_matrix = []
         accuracy = []
         for mIdx, model in enumerate(models):
             list_predictions = []
             model = model.to(device)
+
             with torch.no_grad():
+                seg_out, edge_out = model(data.to(device))
+                yhat = seg_out.data.max(1)[1]
 
-                data, segmask = data.to(device), labels.to(device)
-                segin, edgein = model(data.to(device))
-                segin = segin.data.max(1)[1].cpu()  #take only the 2nd image of the batch
 
-                list_predictions.append(segin[0, ...].cpu().numpy().flatten())
+                list_predictions.append(yhat[0, ...].flatten())
                 all_predictions = np.concatenate(list_predictions)
                 all_gt_labels = np.concatenate(list_gt_labels)
                 accuracy.append(accuracy_score(all_gt_labels, all_predictions))
-                conf_matrix.append(confusion_matrix(all_gt_labels, all_predictions, labels=[0, 1, 2, 3, 4, 5]))
+                conf_matrix.append(confusion_matrix(all_gt_labels, all_predictions))
 
                 # plot model predictions
-                ax[mIdx+1].imshow(segin[0, ...].cpu().numpy(), cmap=cMap)
-                ax[mIdx+1].axis('off')
+                ax[mIdx + 1].imshow(yhat[0, ...].cpu().numpy(), cmap=cMap)
+                ax[mIdx + 1].axis('off')
+                cax = ax[mIdx + 1].set_title(f'Epoch {epochs[mIdx]}')
 
         if show_metrics:
-            _, ax = plt.subplots(nrows=1, ncols=numModels, figsize = (20, 20))
+            _, ax = plt.subplots(nrows=1, ncols=numModels, figsize=(20, 20))
             for mIdx, model in enumerate(models):
                 conf_matrix_one = conf_matrix[mIdx]
-          
+
                 ax[mIdx].matshow(conf_matrix_one, cmap=plt.cm.Blues, alpha=0.5)
 
                 iou, recall, precision, f1, kappa = compute_metrics(conf_matrix_one)
-                
+
                 for i in range(conf_matrix_one.shape[0]):
                     for j in range(conf_matrix_one.shape[1]):
-                        if math.isnan(conf_matrix_one[i,j]):
-                            conf_matrix_one[i,j] = 0
-                    ax[mIdx].text(x=j, y=i,s=conf_matrix_one[i, j], va='center', ha='center', size='x-large')
-                ax[mIdx].set_xlabel('Predictions', fontsize=18)
-                ax[mIdx].set_ylabel('Ground Truth', fontsize=18)
-                ax[mIdx].set_title('Confusion Matrix', fontsize=18)
-
-                _, axm =plt.subplots(1,1)
-                data=[iou, f1, [kappa]]
-                column_labels=['Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter']
-                df=pd.DataFrame(data,columns=column_labels)
-                axm.axis('tight')
-                axm.axis('off')
-                axm.table(cellText=df.values,colLabels=df.columns,rowLabels=["IoU","F1","Kappa"],loc="center")
+                        if math.isnan(conf_matrix_one[i, j]):
+                            conf_matrix_one[i, j] = 0
+                        ax[mIdx].text(x=j, y=i, s=conf_matrix_one[i, j], va='center', ha='center', size='x-large')
+                    ax[mIdx].set_xlabel('Predictions', fontsize=18)
+                    ax[mIdx].set_ylabel('Ground Truth', fontsize=18)
+                    ax[mIdx].set_title('Confusion Matrix', fontsize=18)
+                if idx == 1 and epochs[mIdx] == 'latest':
+                    print("F1", f1)
+                    print("IoU", iou)
+                    print("Kappa", kappa)
+                    # print("OA", OA)
+                    # print("UA", UA)
+                    # print("PA", PA)
+                    print("Mean FScore", sum(f1) / len(f1))
+                    print("Mean IoU", sum(iou) / len(iou))
+                    # print("Mean UA", sum(UA) / len(UA))
+                    # print("Mean PA", sum(PA) / len(PA))
         plt.show()
