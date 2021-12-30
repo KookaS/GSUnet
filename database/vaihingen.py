@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 
 # absolute path to the dataset
-data_root = 'dataset_512x512_full'
+data_root = 'dataset_512x512_final'
 
 # label class names
 LABEL_CLASSES = ('Impervious', 'Buildings', 'Low Vegetation', 'Tree', 'Car', 'Clutter')

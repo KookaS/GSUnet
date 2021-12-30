@@ -20,3 +20,11 @@ CUDA : https://pytorch.org/get-started/locally/
 Change the root dir of the dataset in network.dataset.vaihingen
 
 No data augmentation is done here, it is up to you to implement it (albumentations should work)
+
+## results
+
+Ground truth, 30th epoch segmentation, 42th sepoch segmentation, 42th epoch edges
+![Segmentations](images/segmentations.png)
+
+Confusion matrices of 30th and 42th epochs
+![Segmentations](images/confusion_matrix.png)
