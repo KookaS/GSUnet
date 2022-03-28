@@ -15,7 +15,7 @@ CUDA : https://pytorch.org/get-started/locally/
 
 ## dataset
 
-[ISPRS Vaihingen](https://www2.isprs.org/commissions/comm2/wg4/benchmark/2d-sem-label-vaihingen/) semantic segmentation dataset
+[ISPRS Vaihingen](https://www.isprs.org/education/benchmarks/UrbanSemLab/default.aspx) semantic segmentation dataset download link
 
 Change the root dir of the dataset in network.dataset.vaihingen
 
